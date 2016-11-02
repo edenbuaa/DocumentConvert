@@ -1,47 +1,10 @@
-﻿using System;
-using System.IO;
-using System.IO.Compression;
-using System.Reflection;
-using System.Text;
-using System.Threading.Tasks;
-using System.Diagnostics;
-using System.Security.AccessControl;
-using Hst.Core.Helpers;
-using Hst.Core;
-using EHRProxy;
-using System.Data;
-using DocumentFormat.OpenXml.Packaging;
-using OpenXmlPowerTools;
-using System.Drawing.Imaging;
-using System.Xml.Linq;
-using System.Linq;
-
-namespace eChartPrintConsole.MSMQ
+namespace DocMgr
 {
     /// <summary>
     /// Test for PDF function with wkhtmltopdf SDK
     /// </summary>
     public class DocumentManager
     {
-        private static readonly object GlobalObj = new object();
-        private string _pdfProgram;
-        private string _gsProgram;
-        private readonly string _outputPath;
-
-        public bool CanRead { get; private set; }
-
-        public string PDFFileFullName { get; private set; }
-
-        public DataSet Documents { get; set; }
-
-        public DocumentManager(string outputPath)
-        {
-            CanRead = false;
-            _outputPath = outputPath;
-            LoadWkHtmltoPdfLib();
-            LoadWkHtmltoPdfLib(OSHelper.WapperStartKey4gs); //for Ghostscript
-        }
-
         public Task<bool> HTMLtoPDFAsync(PdfDocument doc)
         {
             return Task.Run(() => HtmlToPdf(doc));
@@ -49,123 +12,13 @@ namespace eChartPrintConsole.MSMQ
 
         private bool HtmlToPdf(PdfDocument document)
         {
-            try
-            {
-                //verify inputs
-                if (document.ChartKey < 0)
-                    throw new Exception("No input ChartKey provided for HtmlToPdf");
-                if (string.IsNullOrEmpty(document.HtmlUrlRoot))
-                    throw new Exception("No input URLs provided for HtmlToPdf");
+           //running task
 
-                PDFFileFullName = FileCompress.GetFullPathDocumentFile(document.FileName);
-
-                if (!Directory.Exists(_outputPath))
-                    Directory.CreateDirectory(_outputPath);
-
-                var paramsBuilder = new StringBuilder();
-                //paramsBuilder.Append("--orientation Landscape ");
-                paramsBuilder.Append("--page-size Letter ");
-                paramsBuilder.Append("--margin-top 15mm --margin-left 15mm --margin-right 15mm --margin-bottom 15mm ");
-
-                paramsBuilder.Append("--footer-center \"[page] of [topage]\" ");
-
-                paramsBuilder.AppendFormat("--header-center \"{0}\" ", document.HeaderString);
-                paramsBuilder.Append("--header-line ");
-                paramsBuilder.Append("--header-spacing 5 ");
-                paramsBuilder.Append("--margin-top 18 ");
-
-                // paramsBuilder.Append("--print-media-type ");
-                //paramsBuilder.Append("--redirect-delay 0 "); not available in latest version
-                if (!string.IsNullOrEmpty(document.CoverUrl))
-                {
-                    paramsBuilder.AppendFormat("cover {0} ", document.CoverUrl);
-                }
-                if (!string.IsNullOrEmpty(document.HeaderUrl))
-                {
-                    paramsBuilder.AppendFormat("--header-html {0} ", document.HeaderUrl);
-                    paramsBuilder.Append("--margin-top 25 ");
-                    paramsBuilder.Append("--header-spacing 5 ");
-                }
-                if (!string.IsNullOrEmpty(document.FooterUrl))
-                {
-                    paramsBuilder.AppendFormat("--footer-html {0} ", document.FooterUrl);
-                    paramsBuilder.Append("--margin-bottom 25 ");
-                    paramsBuilder.Append("--footer-spacing 5 ");
-                }
-
-                paramsBuilder.AppendFormat("{0} {1}", document.HtmlUrl, PDFFileFullName);
-                //paramsBuilder.AppendFormat("toc {0} {1}", document.HtmlUrl, outputFilename);
-
-                var startInfo = new ProcessStartInfo
-                {
-                    FileName = _pdfProgram,
-                    Arguments = paramsBuilder.ToString(),
-                    UseShellExecute = false
-                };
-
-                using (var p = new Process())
-                {
-                    p.StartInfo = startInfo;
-
-                    p.EnableRaisingEvents = true;
-
-                    p.Exited += new EventHandler((sender,e) => {                        
-                        // read the exit code
-                        var returnCode = p.ExitCode;
-
-                        CanRead = (returnCode == 0) || (returnCode == 2);
-
-                        if (CanRead)
-                        {
-                            Console.WriteLine("----------Document Printting------------");
-
-                            AttachChartDocuments();
-                        }
-                    });
-
-                    p.Start();
-                    // ...then wait n milliseconds for exit (as after exit, it can't read the output)
-                    // in fact, it will may more longer than 60s
-                    p.WaitForExit();
-
-                    return CanRead;
-                }
-
-            }
-            catch (Exception ex)
-            {
-                eChartLog.WriteChartCPLEventLog(string.Format("Error in HtmlToPdf:{0}", ex.ToString()), EventLogEntryType.Error);
-
-                //throw new Exception("Problem generating PDF from HTML", exc);
-                CanRead = false;
-                //return CanRead;
-
-                //we want to save the exception to DB, so
-                //only way is throw exception
-                throw ex;
-            }
         }
 
-        /// <summary>
-        /// Process the chart document.
-        /// In this Beta version, just filter the pdf files for now, and merge them with the html pdf
-        /// Also, we can handle the MS Word file later:
-        /// 1. Convert the Word to Pdf,and merge them all ??
-        /// 2. Using the Microsoft.Office and Office required or some other indenpendency component ??
-        /// references:
-        /// http://www.codeproject.com/Questions/346784/How-to-convert-word-document-to-pdf-in-Csharp
-        /// -- by Peter. 10/27/16 --
-        /// </summary>
-        /// <returns></returns>
+        //merge pdfs by ghostscript
         private bool AttachChartDocuments()
         {
-            bool result =  false;
-            if (string.IsNullOrEmpty(PDFFileFullName) || 1 > Documents.Tables[0].Rows.Count)
-            {
-                Console.WriteLine(">>>>>>>>No Document<<<<<<<<<<");
- 
-                return result;
-            }
             var appBase = AppDomain.CurrentDomain.BaseDirectory; 
             var tempPath = appBase + "tmp";
             var gsdllPath = Path.Combine(appBase + "bin", OSHelper.WapperStartKey4gs + "dll");
@@ -269,7 +122,7 @@ namespace eChartPrintConsole.MSMQ
 
                         p.Exited += new EventHandler((s,e) => {
 
-                            Console.WriteLine("-------------Document Printing Exit---------------");
+                           //
 
                         });
 
@@ -415,7 +268,8 @@ namespace eChartPrintConsole.MSMQ
             }
             return result;
         }
-
+        
+        //convert word to html by openxmlpowertool
         private void ConvertDocToHtml(string source, string output)
         {
             var fi = new FileInfo(source);
@@ -529,6 +383,7 @@ namespace eChartPrintConsole.MSMQ
             }
         }
 
+        //convert html to pdf by wkhtml
         private void ConvertHtmlToPdf(string source, string output)
         {
             var wkParams = string.Format(" {0} {1}",source,output);
