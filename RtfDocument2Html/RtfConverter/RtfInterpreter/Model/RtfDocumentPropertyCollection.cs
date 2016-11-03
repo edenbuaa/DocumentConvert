@@ -1,0 +1,62 @@
+﻿using RtfConverter.Parser;
+
+using System;
+
+namespace RtfConverter.RtfInterpreter.Model
+{
+
+	// ------------------------------------------------------------------------
+	public sealed class RtfDocumentPropertyCollection : ReadOnlyBaseCollection, IRtfDocumentPropertyCollection
+	{
+
+		// ----------------------------------------------------------------------
+		public IRtfDocumentProperty this[ int index ]
+		{
+			get { return InnerList[ index ] as IRtfDocumentProperty; }
+		} // this[ int ]
+
+		// ----------------------------------------------------------------------
+		public IRtfDocumentProperty this[ string name ]
+		{
+			get
+			{
+				if ( name != null )
+				{
+					foreach ( IRtfDocumentProperty property in InnerList )
+					{
+						if ( property.Name.Equals( name ) )
+						{
+							return property;
+						}
+					}
+				}
+				return null;
+			}
+		} // this[ string ]
+
+		// ----------------------------------------------------------------------
+		public void CopyTo( IRtfDocumentProperty[] array, int index )
+		{
+			InnerList.CopyTo( array, index );
+		} // CopyTo
+
+		// ----------------------------------------------------------------------
+		public void Add( IRtfDocumentProperty item )
+		{
+			if ( item == null )
+			{
+				throw new ArgumentNullException( "item" );
+			}
+			InnerList.Add( item );
+		} // Add
+
+		// ----------------------------------------------------------------------
+		public void Clear()
+		{
+			InnerList.Clear();
+		} // Clear
+
+	} // class RtfDocumentPropertyCollection
+
+}
+
